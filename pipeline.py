@@ -1,4 +1,5 @@
 import logging
+import types
 
 from gevent.queue import Queue
 from gevent.pool import Pool, Group
@@ -118,16 +119,17 @@ class Filter(Stage):
 def pipeline(stages, initial_data):
     monitors = Group()
     # Make sure items in initial_data are iterable.
-    #  They are considered internally as iterables of func arguments.
-    #  eg. (arg1, ) or (arg1, arg2,)
-    try:
-        [iter(x) for x in initial_data]
-    except TypeError:
-        initial_data = [[x] for x in initial_data]
     # The StopIteration will bubble through the queues as it is reached.
     #   Once a stage monitor sees it, it indicates that the stage is complete,
     #   and the monitor can clean up and is no longer needed.
-    initial_data.append(StopIteration)
+    if not isinstance(initial_data, types.GeneratorType):
+        try:
+            iter(initial_data)
+        except:
+            raise TypeError('initial_data must be iterable')
+    if hasattr(initial_data, 'append'):
+        # If we need to, append a StopIteration, otherwise
+        initial_data.append(StopIteration)
     # chain stage queue io
     #  Each stage shares an output queue with the next stage's input.
     qs = [initial_data] + [Queue() for _ in range(len(stages))]

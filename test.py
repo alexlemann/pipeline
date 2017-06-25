@@ -1,8 +1,10 @@
 #!/usr/bin/env python
-from pipeline import Stage, Filter, Reduce, pipeline
-
 import random
+from functools import reduce
+
 import gevent
+
+from pipeline import Stage, Filter, Reduce, pipeline
 
 
 def randomize_pause(func):
@@ -33,41 +35,49 @@ def total(x, y):
 
 
 data = [1, 2, 3, 4, 5, 6]
+print(list(map(add_ten, map(double, data))))
 dbl = Stage(double, n_workers=2)
 ten = Stage(add_ten, n_workers=2)
 res = pipeline([dbl, ten], data)
 print(res)
-print(list(map(add_ten, map(double, data))))
 print('----')
 
+
 data = [1, 2, 3, 4, 5, 6]
+print(list(map(double, map(add_ten, data))))
 dbl = Stage(double, n_workers=2)
 ten = Stage(add_ten, n_workers=2)
 res = pipeline([ten, dbl], data)
 print(res)
-print(list(map(double, map(add_ten, data))))
 print('----')
 
 data = [1, 2, 3, 4, 5, 6]
+print(list(map(add_ten, map(double, data))))
 dbl = Stage(randomize_pause(double), n_workers=2)
 ten = Stage(randomize_pause(add_ten), n_workers=2)
 res = pipeline([dbl, ten], data)
 print(res)
-print(list(map(add_ten, map(double, data))))
 print('----')
 
 data = [1, 2, 3, 4, 5, 6]
+print(list(map(triple, filter(odds, data))))
 filt = Filter(odds, n_workers=2)
 trip = Stage(triple, n_workers=2)
 res = pipeline([filt, trip], data)
 print(res)
-print(list(map(triple, filter(odds, data))))
 print('----')
 
-from functools import reduce
 data = [1, 2, 3, 4, 5, 6]
+print(reduce(total, map(triple, data)))
 trip = Stage(triple, n_workers=2)
 tot = Reduce(total, initial_value=0)
 res = pipeline([trip, tot], data)
 print(res)
-print(reduce(total, map(triple, data)))
+print('----')
+
+print(list(map(triple, filter(odds, range(100)))))
+filt = Filter(odds, n_workers=2)
+trip = Stage(triple, n_workers=2)
+res = pipeline([filt, trip], range(100))
+print(res)
+print('----')
