@@ -1,0 +1,77 @@
+Todo
+--
+* Finalize primitives
+* Test concepts using Test Application ides below.
+* Document
+* Create nice Python package
+* Release v0.1
+* Improve tooling & pluggable component structure.
+
+Current fundamental issues:
+--
+* Should ways to read in multiple queue items in a stage be supported?
+  * Can the applications and primitives be supported without this?
+* Is the library code minimal yet allows for flexibility to support desired applications?
+
+Primitive patterns to support:
+--
+* partition, filter, reduce, map
+* composition of pipelines
+* See MapReduce design patterns for more ideas: https://books.google.com/books?id=AAWa8QqCSZwC
+
+Pipeline pluggables:
+--
+* The concept of the pluggable backends for queue components.
+* queues (network based, priority queue)
+  * using priority queues in a stage could produce ordered output without requiring an additional scan
+* threads (greenlets, multiprocessors, across computers?)
+
+Test Applications:
+--
+* IO contrained apps vs. computional resource constrained apps.
+* Word counting across documents, summing
+  * The standard example.
+* Web framework
+  * Possible stages: (Input external layer (wsgi, network), build request object, middleware, url->function dispatcher, template renderer, build response, output external layer (wsgi, network))
+* Scraper
+* pyGSE
+* Lexer / parsers?
+* Parallel download / storage
+  * Work sets created based on buffer size, file size (download seek position)
+  * Multiple streams are downloaded simulataneously, relatively in order but not gauranteed to return in order.
+  * If the disk write queue's smallest item is the next item relative to what has been written thus far, write it to disk (or all of the items in the queue that are sequential starting with the next buffer to be written)
+  * Limit WIP. Don't allow downloaders to continue on if writer is blocked waiting for a specific buffer
+  * Allow for single block retries and eventual pipeline failures.
+* Machine learning model pipeline
+
+Tooling:
+--
+* Post conditions for stages:
+  * https://wiki.python.org/moin/PythonDecoratorLibrary#Pre-.2FPost-Conditions
+  * Would be nice in creating fuzzed tests
+  * Could possibly be turned on / off.
+* Iterator for initial data
+  * Read in items from command line for exploring a pipeline or stage.
+* Subscribers for pipeline stages
+  * Have threads started dynamically if an output matches criteria
+  * Could possibly allow for high priority traffic being responded to more quickly
+  * Would allow for the next stage to be called without a full scan of the items.
+    * This is basically a stage that only executes on items that meet criteria.
+    * How could this simply be implemented given current primitives?
+* Stage timeouts / restarts / failures
+  * If a stage given an input has not finished after timeout, restart. Once N restarts, bail (create checkpoint and quick).
+* Checkpoint and restarting
+  * Checkpoint: Do not start any more workers. Write all queues to disk.
+  * Restart: Read all queues from disk and start processing again.
+* WIP Visualizations or logging.
+  * Number of workers running / idle at each stage.
+  * Stage bandwidth
+  * Accumulators of total items seen by stage / per worker etc.
+  * Show us the slow items or post condition failures.
+
+Similar projects or concepts:
+--
+* MapReduce
+* ApacheSpark ( https://en.wikipedia.org/wiki/Apache_Spark )
+* https://github.com/simonschmidt/gevent-pipeline
+* MongoDB / CouchDB / Hadoop etc.
