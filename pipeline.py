@@ -34,9 +34,10 @@ def stage_monitor(stage):
         """
         if len(args) == 1:
             args = args[0]
-        if type(Stage) == Reduce:
-            # XXX: This doesn't / can't work the way I want it to.
-            if not stage.in_q:
+        if type(stage) == Reduce:
+            # XXX: This would not work for stream inputs afaict
+            #   But, reduction should not work anyway
+            if len(work_pool) + len(save_group) + len(stage.in_q) == 1:
                 stage.out_q.put(args)
             else:
                 stage.out_q.put(DROP)
@@ -136,7 +137,10 @@ def pipeline(stages, initial_data):
         monitors.spawn(stage_monitor, stage)
         gevent.sleep(0)
     monitors.join()
-    # Reformat final queue into a list. Also, performing this final iteration,
-    #   removes the final StopIteration item.
-    final_output = list(stages[-1].out_q)
+    # Reformat final queue into a list or single item.
+    # Also, performing this final iteration, removes the final StopIteration
+    # item.
+    final_output = list(filter(lambda x: x is not DROP, stages[-1].out_q))
+    if len(final_output) == 1:
+        return final_output[0]
     return final_output
