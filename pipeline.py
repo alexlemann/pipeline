@@ -16,32 +16,49 @@ class DROP:
     pass
 
 
-def make_filter(func):
-    def inner(*args):
-        if func(*args):
-            return args
-        else:
-            return DROP
-    return inner
-
-
 def stage_monitor(stage):
+    """
+    Stage monitor is a worker that monitors a stage while it is being executed.
+      The stage monitor coordinates running stage workers, saving results, and
+      determining the end of any particular stage.
+    """
+    # Pool of stage function worker greenlets.
     work_pool = Pool(size=stage.n_workers)
+    # Group of greenlets which save results from workers via callbacks.
     save_group = Group()
 
     def save_result(*args):
-        logger.debug('Saving << {} >>'.format(args))
+        """
+        Save results onto the output queue as a tuple or if there is only
+          a single returned value, save that instead as that singular item.
+        """
         if len(args) == 1:
             args = args[0]
-        stage.out_q.put(args)
+        if type(Stage) == Reduce:
+            # XXX: This doesn't / can't work the way I want it to.
+            if not stage.in_q:
+                stage.out_q.put(args)
+            else:
+                stage.out_q.put(DROP)
+        else:
+            stage.out_q.put(args)
 
     for x in stage.in_q:
+        """
+        Iterate the input queue until StopIteration is received.
+          Spawn new workers for work items on the input queue.
+          Keep track of storing results via a group of result saving greenlets.
+
+        Ignore all DROP items in the input queue.
+
+        Once we receive a StopIteration, wait for all open workers to finish
+          and once they are finished, bubble the StopIteration to the next stage
+        """
         gevent.sleep(0)
-        if x is StopIteration:
-            break
         if x is DROP:
             continue
-        logger.debug('Spawning << {} >> with << {} >>'.format(stage.func, x))
+        if x is StopIteration:
+            break
         try:
             func_args = iter(x)
         except TypeError:
@@ -57,6 +74,27 @@ def stage_monitor(stage):
     return stage
 
 
+def make_filter(func):
+    def inner(*args):
+        if func(*args):
+            return args
+        else:
+            return DROP
+    return inner
+
+
+def make_reduce(func):
+    def inner(*args):
+        if not hasattr(func, '__accumulator'):
+            args = [func.initial_value] + list(args)
+            func.__accumulator = func(*args)
+        else:
+            args = [func.__accumulator] + list(args)
+            func.__accumulator = func(*args)
+        return func.__accumulator
+    return inner
+
+
 class Stage:
     def __init__(self, func, n_workers=1):
         self.func = func
@@ -64,8 +102,10 @@ class Stage:
 
 
 class Reduce(Stage):
-    def __init__(self, func):
-        super(Reduce).__init__(func, n_workers=1)
+    def __init__(self, func, initial_value):
+        reduce_func = make_reduce(func)
+        func.initial_value = initial_value
+        super(Reduce, self).__init__(reduce_func)
 
 
 class Filter(Stage):
@@ -77,14 +117,18 @@ class Filter(Stage):
 def pipeline(stages, initial_data):
     monitors = Group()
     # Make sure items in initial_data are iterable.
-    #  They are considered iterables of func arguments.
+    #  They are considered internally as iterables of func arguments.
+    #  eg. (arg1, ) or (arg1, arg2,)
     try:
         [iter(x) for x in initial_data]
     except TypeError:
         initial_data = [[x] for x in initial_data]
+    # The StopIteration will bubble through the queues as it is reached.
+    #   Once a stage monitor sees it, it indicates that the stage is complete,
+    #   and the monitor can clean up and is no longer needed.
+    initial_data.append(StopIteration)
     # chain stage queue io
     #  Each stage shares an output queue with the next stage's input.
-    initial_data.append(StopIteration)
     qs = [initial_data] + [Queue() for _ in range(len(stages))]
     for stage, in_q, out_q in zip(stages, qs[:-1], qs[1:]):
         stage.in_q = in_q
@@ -92,7 +136,7 @@ def pipeline(stages, initial_data):
         monitors.spawn(stage_monitor, stage)
         gevent.sleep(0)
     monitors.join()
-    # final_output is in a nice format and iterates over the final queue in
-    #   order to remove the StopIteration item.
+    # Reformat final queue into a list. Also, performing this final iteration,
+    #   removes the final StopIteration item.
     final_output = list(stages[-1].out_q)
     return final_output
