@@ -51,8 +51,10 @@ Tooling:
   * https://wiki.python.org/moin/PythonDecoratorLibrary#Pre-.2FPost-Conditions
   * Would be nice in creating fuzzed tests
   * Could possibly be turned on / off.
-* Iterator for initial data
+* Iterator or generator for initial data
   * Read in items from command line for exploring a pipeline or stage.
+  * Related to stream processing primitive
+  * Flushing the stream / cleanly shut it down. Related somewhat to checkpoint / restarting
 * Subscribers for pipeline stages
   * Have threads started dynamically if an output matches criteria
   * Could possibly allow for high priority traffic being responded to more quickly
