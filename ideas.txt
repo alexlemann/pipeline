@@ -18,6 +18,7 @@ Primitive patterns to support:
 * partition, filter, reduce, map
 * composition of pipelines
 * See MapReduce design patterns for more ideas: https://books.google.com/books?id=AAWa8QqCSZwC
+* streams
 
 Pipeline pluggables:
 --
@@ -73,5 +74,9 @@ Similar projects or concepts:
 --
 * MapReduce
 * ApacheSpark ( https://en.wikipedia.org/wiki/Apache_Spark )
-* https://github.com/simonschmidt/gevent-pipeline
 * MongoDB / CouchDB / Hadoop etc.
+* https://github.com/pditommaso/awesome-pipeline
+* https://github.com/simonschmidt/gevent-pipeline
+* https://github.com/robdmc/consecution
+* https://github.com/spotify/luigi
+* https://github.com/baffelli/pyperator
