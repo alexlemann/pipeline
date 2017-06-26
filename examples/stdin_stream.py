@@ -4,7 +4,7 @@ import sys
 from pipeline import pipeline, Stage
 
 
-def integerify(x, *args):
+def integerify(x):
     return int(x)
 
 inter = Stage(integerify, n_workers=2)

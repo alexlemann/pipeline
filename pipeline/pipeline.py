@@ -28,22 +28,18 @@ def stage_monitor(stage):
     # Group of greenlets which save results from workers via callbacks.
     save_group = Group()
 
-    def save_result(*args):
+    def save_result(x):
         """
         Save results onto the output queue as a tuple or if there is only
           a single returned value, save that instead as that singular item.
         """
-        if len(args) == 1:
-            args = args[0]
         if type(stage) == Reduce:
             # XXX: This would not work for stream inputs afaict
             #   But, reduction should not work anyway
             if len(work_pool) + len(save_group) + len(stage.in_q) == 1:
-                stage.out_q.put(args)
-            else:
-                stage.out_q.put(DROP)
+                stage.out_q.put(x)
         else:
-            stage.out_q.put(args)
+            stage.out_q.put(x)
 
     for x in stage.in_q:
         """
@@ -61,10 +57,7 @@ def stage_monitor(stage):
             continue
         if x is StopIteration:
             break
-        try:
-            func_args = iter(x)
-        except TypeError:
-            func_args = [x]
+        func_args = [x]
         cb_worker = work_pool.apply_async(stage.func,
                                           func_args,
                                           callback=save_result)
@@ -77,22 +70,21 @@ def stage_monitor(stage):
 
 
 def make_filter(func):
-    def inner(*args):
-        if func(*args):
-            return args
+    def inner(x):
+        if func(x):
+            return x
         else:
             return DROP
     return inner
 
 
 def make_reduce(func):
-    def inner(*args):
+    def inner(y):
         if not hasattr(func, '__accumulator'):
-            args = [func.initial_value] + list(args)
-            func.__accumulator = func(*args)
+            x = func.initial_value
         else:
-            args = [func.__accumulator] + list(args)
-            func.__accumulator = func(*args)
+            x = func.__accumulator
+        func.__accumulator = func(x, y)
         return func.__accumulator
     return inner
 
