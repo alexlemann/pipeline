@@ -1,10 +1,14 @@
 #!/usr/bin/env python
+import gevent
+from gevent import monkey
+
+monkey.patch_all() # noqa
+
 import random
 from functools import reduce
 
-import gevent
-
 from pipeline import Stage, Filter, Reduce, pipeline
+from pipeline.queue import tee
 
 
 def randomize_pause(func):
@@ -39,7 +43,8 @@ print(list(map(add_ten, map(double, data))))
 dbl = Stage(double, n_workers=2)
 ten = Stage(add_ten, n_workers=2)
 res = pipeline([dbl, ten], data)
-print(res)
+res.join()
+print(res.values)
 print('----')
 
 
@@ -48,7 +53,8 @@ print(list(map(double, map(add_ten, data))))
 dbl = Stage(double, n_workers=2)
 ten = Stage(add_ten, n_workers=2)
 res = pipeline([ten, dbl], data)
-print(res)
+res.join()
+print(res.values)
 print('----')
 
 data = [1, 2, 3, 4, 5, 6]
@@ -56,7 +62,8 @@ print(list(map(add_ten, map(double, data))))
 dbl = Stage(randomize_pause(double), n_workers=2)
 ten = Stage(randomize_pause(add_ten), n_workers=2)
 res = pipeline([dbl, ten], data)
-print(res)
+res.join()
+print(res.values)
 print('----')
 
 data = [1, 2, 3, 4, 5, 6]
@@ -64,7 +71,8 @@ print(list(map(triple, filter(odds, data))))
 filt = Filter(odds, n_workers=2)
 trip = Stage(triple, n_workers=2)
 res = pipeline([filt, trip], data)
-print(res)
+res.join()
+print(res.values)
 print('----')
 
 data = [1, 2, 3, 4, 5, 6]
@@ -72,12 +80,24 @@ print(reduce(total, map(triple, data)))
 trip = Stage(triple, n_workers=2)
 tot = Reduce(total, initial_value=0)
 res = pipeline([trip, tot], data)
-print(res)
+res.join()
+print(res.values)
 print('----')
 
-print(list(map(triple, filter(odds, range(100)))))
+
 filt = Filter(odds, n_workers=2)
+interim_result = pipeline([filt], range(10))
+interim_result.join()
+t1, t2 = tee(interim_result.out_q, 2)
 trip = Stage(triple, n_workers=2)
-res = pipeline([filt, trip], range(100))
-print(res)
+trip_pipe_result = pipeline([trip], initial_data=t1)
+dbl = Stage(double, n_workers=2)
+dbl_pipe_result = pipeline([dbl], initial_data=t2)
+trip_pipe_result.join()
+dbl_pipe_result.join()
+
+print(list(map(triple, filter(odds, range(10)))))
+print(trip_pipe_result.values)
+print(list(map(double, filter(odds, range(10)))))
+print(dbl_pipe_result.values)
 print('----')

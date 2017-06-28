@@ -108,6 +108,24 @@ class Filter(Stage):
         super(Filter, self).__init__(filter_func, n_workers)
 
 
+class PipelineResult:
+    def __init__(self, monitors, out_q):
+        self.monitors = monitors
+        self.out_q = out_q
+
+    def join(self):
+        self.monitors.join()
+
+    @property
+    def values(self):
+        if len(self.monitors) > 0:
+            raise Exception('Pipeline is not finished.'
+                            'Use pipeline.join() to wait for completion. '
+                            'Or use pipeline.out_q to consume partial results.')
+        # Final iteration to drop DROPs and StopIteration
+        return list(filter(lambda x: x is not DROP, self.out_q))
+
+
 def pipeline(stages, initial_data):
     monitors = Group()
     # Make sure items in initial_data are iterable.
@@ -130,11 +148,4 @@ def pipeline(stages, initial_data):
         stage.out_q = out_q
         monitors.spawn(stage_monitor, stage)
         gevent.sleep(0)
-    monitors.join()
-    # Reformat final queue into a list or single item.
-    # Also, performing this final iteration, removes the final StopIteration
-    # item.
-    final_output = list(filter(lambda x: x is not DROP, stages[-1].out_q))
-    if len(final_output) == 1:
-        return final_output[0]
-    return final_output
+    return PipelineResult(monitors, stages[-1].out_q)
