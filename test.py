@@ -101,3 +101,11 @@ print(trip_pipe_result.values)
 print(list(map(double, filter(odds, range(10)))))
 print(dbl_pipe_result.values)
 print('----')
+
+data = [1, 2, 3, 4, 5]
+range_stage = Stage(range, n_workers=2)
+list_stage = Stage(list, n_workers=2, returns_many=True)
+res = pipeline([range_stage, list_stage], data)
+res.join()
+print(res.values)
+print('----')

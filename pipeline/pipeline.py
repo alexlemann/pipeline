@@ -39,7 +39,14 @@ def stage_monitor(stage):
             if len(work_pool) + len(save_group) + len(stage.in_q) == 1:
                 stage.out_q.put(x)
         else:
-            stage.out_q.put(x)
+            if not stage.returns_many:
+                stage.out_q.put(x)
+            else:
+                try:
+                    for i in x:
+                        stage.out_q.put(i)
+                except:
+                    stage.out_q.put([x])
 
     for x in stage.in_q:
         """
@@ -90,9 +97,10 @@ def make_reduce(func):
 
 
 class Stage:
-    def __init__(self, func, n_workers=1):
+    def __init__(self, func, n_workers=1, returns_many=False):
         self.func = func
         self.n_workers = n_workers
+        self.returns_many = returns_many
 
 
 class Reduce(Stage):
