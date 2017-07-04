@@ -10,5 +10,5 @@ def integerify(x):
 inter = Stage(integerify, n_workers=2)
 triple = Stage(lambda x: 3*x, n_workers=2)
 res = pipeline([inter, triple], sys.stdin)
-print(res)
-print('----')
+res.join()
+print(res.values)
