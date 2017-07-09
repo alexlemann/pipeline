@@ -99,7 +99,6 @@ def framework(environ, start_response):
     def render(request, response):
         if hasattr(response, 'jinja2_template') and hasattr(response, 'context'):
             response.text = response.jinja2_template.render(**response.context)
-            print('yes template')
         return request, response
 
     request = Request(environ)
