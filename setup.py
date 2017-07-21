@@ -9,8 +9,8 @@ def test_suite():
     test_loader = unittest.TestLoader()
     test_suite = unittest.TestSuite()
 
-    test_suite.addTest(doctest.DocTestSuite('pipeline.queue_tools'))
-    test_suite.addTest(doctest.DocTestSuite('pipeline.pipeline'))
+    # test_suite.addTest(doctest.DocTestSuite('pipeline.queue_tools'))
+    # test_suite.addTest(doctest.DocTestSuite('pipeline.pipeline'))
     test_suite.addTest(test_loader.discover('tests', pattern='test_*.py'))
     return test_suite
 
