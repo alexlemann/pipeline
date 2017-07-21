@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import logging
 import types
 
@@ -76,7 +77,7 @@ def stage_monitor(stage):
     return stage
 
 
-def make_filter(func):
+def _make_filter(func):
     def inner(x):
         if func(x):
             return x
@@ -85,7 +86,7 @@ def make_filter(func):
     return inner
 
 
-def make_reduce(func):
+def _make_reduce(func):
     def inner(y):
         if not hasattr(func, '__accumulator'):
             x = func.initial_value
@@ -105,15 +106,33 @@ class Stage:
 
 class Reduce(Stage):
     def __init__(self, func, initial_value):
-        reduce_func = make_reduce(func)
+        reduce_func = _make_reduce(func)
         func.initial_value = initial_value
         super(Reduce, self).__init__(reduce_func)
 
 
 class Filter(Stage):
-    def __init__(self, func, n_workers=1):
-        filter_func = make_filter(func)
-        super(Filter, self).__init__(filter_func, n_workers)
+    """Creates a stage that follows the Python builtin filter function interface
+    by dropping any values for which ``filter_function`` does not return
+    ``True``.
+
+    This is a helper that creates a wrapper around ``filter_function`` that
+    returns a ``DROP`` object when the result is not ``True``
+
+    >>> from pipeline import Filter, Stage, pipeline
+    >>> def remove_evens(x):
+    ...     return x % 2 == 1
+    >>> pr = pipeline(stages=[Filter(remove_evens, n_workers=1),
+    ...                       Stage(lambda x: x * 3, n_workers=1)],
+    ...               initial_data=[1, 2, 3, 4, 5, 6])
+    >>> pr.join() # doctest: +ELLIPSIS
+    <....PipelineResult object at 0x...>
+    >>> print(pr.values)
+    [3, 9, 15]
+    """
+    def __init__(self, function, n_workers=1):
+        filter_function = _make_filter(function)
+        super(Filter, self).__init__(filter_function, n_workers)
 
 
 class PipelineResult:
@@ -123,6 +142,7 @@ class PipelineResult:
 
     def join(self):
         self.monitors.join()
+        return self
 
     @property
     def values(self):
@@ -133,21 +153,36 @@ class PipelineResult:
         # Final iteration to drop DROPs and StopIteration
         return list(filter(lambda x: x is not DROP, self.out_q))
 
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        while 1:
+            x = next(self.out_q)
+            if x is StopIteration:
+                raise StopIteration
+            elif x is DROP:
+                continue
+            else:
+                return x
+
 
 def pipeline(stages, initial_data):
     monitors = Group()
     # Make sure items in initial_data are iterable.
-    # The StopIteration will bubble through the queues as it is reached.
-    #   Once a stage monitor sees it, it indicates that the stage is complete,
-    #   and the monitor can clean up and is no longer needed.
     if not isinstance(initial_data, types.GeneratorType):
         try:
             iter(initial_data)
         except:
             raise TypeError('initial_data must be iterable')
+    # The StopIteration will bubble through the queues as it is reached.
+    #   Once a stage monitor sees it, it indicates that the stage will read
+    #   no more data and the monitor can wait for the current work to complete
+    #   and clean up.
     if hasattr(initial_data, 'append'):
-        # If we need to, append a StopIteration, otherwise
         initial_data.append(StopIteration)
+    if not stages:
+        return PipelineResult(monitors, [])
     # chain stage queue io
     #  Each stage shares an output queue with the next stage's input.
     qs = [initial_data] + [Queue() for _ in range(len(stages))]
@@ -155,5 +190,10 @@ def pipeline(stages, initial_data):
         stage.in_q = in_q
         stage.out_q = out_q
         monitors.spawn(stage_monitor, stage)
-        gevent.sleep(0)
+    gevent.sleep(0)
     return PipelineResult(monitors, stages[-1].out_q)
+
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
