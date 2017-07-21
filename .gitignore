@@ -1,0 +1,6 @@
+.coveragerc
+.envrc
+.ropeproject/
+__pycache__/
+pipeline.egg-info/
+
