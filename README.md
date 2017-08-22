@@ -3,18 +3,24 @@ Pipeline
 
 This is a library for developing pipelines in Python.
 
-Build and read the docs:
-```
-python ./setup.py build_sphinx
-open docs/_build/html/index.html
-```
+To use the package locally, simply `pip install .` in your python virtualenv.
 
-Work on the library or try it out:
-```
-python ./setup.py develop
-```
+For development, `pip install -r requirements.txt`, and you can do the following:
 
-Run the tests:
-```
-python ./setup.py test
-```
+* Build and read the docs:
+        ```
+        python ./setup.py build_sphinx
+        open docs/_build/html/index.html
+        ```
+
+* Work on the library or checkout the examples:
+
+        ```
+        python ./setup.py develop
+        ```
+
+* Run the tests:
+
+        ```
+        python ./setup.py test
+        ```
