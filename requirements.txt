@@ -1,1 +1,8 @@
-gevent==1.2.1
+# Develop/Examples
+requests==2.18.1
+WebOb==1.7.3
+Paste==2.0.3
+lxml==3.8.0
+
+# Docs
+Sphinx>=1.6.3

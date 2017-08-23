@@ -1,3 +1,0 @@
-requests==2.18.1
-WebOb==1.7.3
-Paste==2.0.3

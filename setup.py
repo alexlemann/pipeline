@@ -21,5 +21,6 @@ setup(name='pipeline',
       author_email='alex.lemann@subsetsum.com',
       url='http://subsetsum.com/',
       packages=find_packages(),
+      install_requires=['gevent==1.2.1'],
       test_suite='setup.test_suite',
       )
